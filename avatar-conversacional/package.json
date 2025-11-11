@@ -1,0 +1,35 @@
+{
+  "name": "avatar-conversacional",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "docker:build": "docker-compose build",
+    "docker:dev": "docker-compose up -d --build avatar-dev",
+    "docker:prod": "docker-compose up -d --build",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
+    "next": "^14.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "three": "^0.181.1",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^14.2.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,23 @@
+# Dockerfile Simple - Avatar Conversacional
+FROM node:18-alpine
+
+# Instalar dependencias mínimas
+RUN apk add --no-cache ffmpeg
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Instalar pnpm globalmente
+RUN npm install -g pnpm
+
+# Instalar dependencias
+RUN pnpm install
+
+# Copiar código fuente
+COPY . .
+
+# Exponer puerto
+EXPOSE 3000
+
+# Iniciar aplicación
+CMD ["pnpm", "dev"]

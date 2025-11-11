@@ -1,0 +1,261 @@
+Rol: Actúa como un arquitecto y desarrollador full-stack senior especializado en WebRTC, Next.js, animación 3D en navegador y voz en tiempo real.
+
+Objetivo: Entregar una aplicación web lista para producción que permita conversar por voz con un asistente de IA a través de un avatar 3D con sincronización labial y gestos faciales. Debe funcionar bien en escritorio y móviles modernos.
+
+1) Alcance y requisitos
+
+Flujo principal (voz↔voz, baja latencia):
+Usuario (micrófono) → STT/LLM/TTS (Realtime) → Audio TTS → Avatar 3D (labios/gestos) → Respuestas del asistente.
+
+Dos modos de operación (seleccionables por config):
+
+Modo A (Simple/Baja latencia): OpenAI Realtime API (WebRTC) para entrada/salida de audio y lógica conversacional. Lip-sync aproximado basado en energía/prosodia o palabras interinas.
+
+Modo B (Lip-sync Pro):
+
+STT: Deepgram Live (o Realtime de OpenAI si simplifica).
+
+LLM: OpenAI Responses/Realtime para la conversación.
+
+TTS: Azure Speech TTS con visemes (o Amazon Polly con speech marks).
+
+Avatar 3D: Three.js/React Three Fiber + Ready Player Me. Mapear visemes/phonemas → blendshapes ARKit/ morphTargets.
+
+Límites de latencia objetivo:
+
+Captura→Transcripción parcial: ≤ 250 ms.
+
+Barge-in (interrumpir al asistente al hablar): soportado.
+
+Audio de respuesta streaming: empieza a oírse en < 400 ms tras fin de turno.
+
+Compatibilidad:
+
+Navegadores Chromium/Firefox/Safari actuales; móviles iOS/Android.
+
+Modo seguro sin WebRTC (fallback a WebSocket) si la red lo requiere.
+
+Accesibilidad:
+
+Subtítulos en vivo (STT) y transcripción del turno.
+
+Botón “Mute/Unmute”, control de velocidad del TTS y volumen.
+
+Contraste/teclas rápidas básicas.
+
+Privacidad/seguridad:
+
+No almacenar audio crudo por defecto.
+
+Variables de entorno para claves.
+
+CORS estricto, CSP sensata, desactivar autoplay sin interacción.
+
+2) Pila tecnológica requerida
+
+Frontend: Next.js 14+, TypeScript, React 18, React Three Fiber + drei, TailwindCSS.
+
+3D Avatar: Ready Player Me (GLTF/GLB con morph targets), iluminación básica, idle motions.
+
+Audio/Web: WebRTC (preferente) y fallback WebSocket; WebAudio API para analyser (lip-sync A).
+
+Realtime/LLM: OpenAI Realtime API (modo A y/o lógica en modo B).
+
+STT (modo B): Deepgram Live (WebSocket) o OpenAI si lo integras más fácil.
+
+TTS (modo B): Azure Speech TTS con viseme stream (o Amazon Polly speech marks).
+
+TURN opcional: coturn (Docker) con guía para despliegue si NAT/CGNAT lo exige.
+
+3) Entregables
+
+Repositorio con estructura clara:
+
+/app
+  /api
+    /realtime/route.ts        // token/sesión con OpenAI Realtime (WebRTC o WS)
+    /deepgram/route.ts        // proxy WS si se usa
+    /azure-tts/route.ts       // proxy TTS + visemes (stream)
+  /(ui)/avatar/page.tsx       // escena 3D, UI principal
+  /(ui)/settings/page.tsx     // toggles: Modo A/B, voz, avatar, sensibilidad VAD
+/lib
+  audio.ts                    // captura mic, VAD, analyser
+  webrtc.ts                   // setup Realtime WebRTC + eventos
+  viseme-mapper.ts            // mapeo viseme→blendshape (ARKit)
+  lip-sync-energy.ts          // heurística para Modo A
+  state.ts                    // Zustand/Jotai store
+/components
+  AvatarCanvas.tsx            // React Three Fiber + RPM
+  Controls.tsx                // botones, estado conversación
+  Captions.tsx                // subtítulos/STS
+/public/models                // avatar .glb (ejemplo)
+.env.example
+README.md
+
+
+README.md con:
+
+Pasos de instalación y env.
+
+Cómo correr en Modo A y Modo B.
+
+Mapa de eventos y contratos (STT partials, TTS chunks, visemes).
+
+Guía de despliegue en Vercel/Netlify y coturn en un VPS.
+
+Tests manuales y métricas de latencia.
+
+.env.example con:
+
+OPENAI_API_KEY=
+OPENAI_REALTIME_MODEL=gpt-4o-realtime-preview
+DEEPGRAM_API_KEY=
+AZURE_SPEECH_KEY=
+AZURE_SPEECH_REGION=
+POLLY_KEY=            # opcional
+POLLY_SECRET=         # opcional
+TURN_URI=             # opcional
+TURN_USER=
+TURN_PASS=
+
+
+Demo funcional accesible en /avatar que:
+
+Permite Conectar/Desconectar.
+
+Muestra niveles de audio, subtítulos en vivo y el avatar hablando.
+
+Soporta barge-in y “Tap to speak/hold to speak”.
+
+4) Detalles de implementación
+
+Detección de turnos (VAD):
+
+Usa WebAudio AnalyserNode con umbral y hangover (p. ej., 200 ms).
+
+En Modo A, usar eventos de “turn detection” de OpenAI Realtime si están disponibles.
+
+Permitir push-to-talk como alternativa.
+
+Lip-sync Modo A (heurístico):
+
+Calcular energía RMS/crest factor en ventanas de 15–25 ms.
+
+Modula morphTargetInfluences["jawOpen"] y un pequeño blend de “lipsFunnel/lipsPucker”.
+
+Suavizado (attack 30 ms / release 80 ms) para evitar chatter.
+
+Lip-sync Modo B (visemes):
+
+Consumir stream viseme de Azure o speech marks de Polly:
+
+Mapear a ARKit (ej.: sil, AA, AE, AH, … → jawOpen, mouthFunnel, mouthPucker, mouthSmileLeft/Right).
+
+Programar keyframes con setTimeout o timeline basada en AudioContext.currentTime.
+
+Sincronizar reloj: usar audio clock como referencia; compensar jitter con look-ahead (≈80–120 ms).
+
+Gestos y expresiones:
+
+Idle motions suaves (parpadeo, micro-movimientos cabeza).
+
+Intensificar cejas/ojos según prosodia TTS (picos de energía o marcadores de énfasis SSML).
+
+Interrupciones (barge-in):
+
+Si el usuario habla durante TTS, pausa TTS y cancela colas; el backend debe soportar cancel y new turn.
+
+Respuestas del asistente (personalidad breve):
+
+Máx. 2–3 frases por turno salvo que el usuario pida más.
+
+Incluir backchanneling (“uh-huh”, “entendido”) cuando haya pausas largas.
+
+SSML:
+
+En Modo B, usa SSML (Azure/Polly) para rate, pitch, break y emphasis.
+
+5) API/Contratos (ejemplos)
+
+Evento STT parcial (client → ui):
+
+type SttPartial = { text: string; isFinal: boolean; startMs: number; endMs: number; };
+
+
+Chunk de TTS (server → client):
+
+type TtsChunk = { audioBase64: string; startMs: number; endMs: number; };
+
+
+Viseme (server → client, Modo B):
+
+type VisemeMark = { id: string; atMs: number; durationMs?: number; arkit: Array<{name: string; value: number}>; };
+
+
+Comandos de control:
+
+{ type: "barge-in" } | { type: "pause-tts" } | { type: "resume-tts" } | { type: "end-session" }
+
+6) Criterios de aceptación (checklist)
+
+ Audio bidireccional con WebRTC y fallback WebSocket.
+
+ Latencia: respuesta inicial audible < 400 ms post-turno (en red local típica).
+
+ Lip-sync:
+
+Modo A: labios reactivamente sincronizados con energía/prosodia.
+
+Modo B: aplicación correcta de visemes en tiempo con desvío < ±80 ms.
+
+ Barge-in funcional.
+
+ Subtítulos en vivo y transcripción final por turno.
+
+ UI con Controles: Connect, Mute, Hold-to-talk, escoger voz, sensibilidad VAD.
+
+ Accesibilidad básica y móvil OK.
+
+ README completo + .env.example.
+
+ Sin errores en consola; manejo de permisos de micrófono y reconexiones.
+
+ Opt-in logging (medir latencias E2E y de cada tramo).
+
+ Build de producción y guía de despliegue (Vercel/Netlify).
+
+ Guía TURN con comando Docker y configuración mínima.
+
+7) Indicaciones de calidad
+
+Código en TypeScript estricto.
+
+Componentes desacoplados (audio, transporte, avatar, UI).
+
+No bloquear el hilo principal; usar workers si hace falta procesar audio.
+
+Mantener consumo de CPU/GPU moderado (limitar polígonos/luces, dpr adaptativo).
+
+Tests manuales (lista de pasos) + script simple para medir latencia (timestamping).
+
+8) Entrega final
+
+Repo Git (público o ZIP).
+
+Comando de inicio: pnpm i && pnpm dev.
+
+Video/GIF corto mostrando: hablar→transcribir→responder→avatar lipsync.
+
+Nota de límites/cuotas de los proveedores y cómo cambiar entre Modo A/B.
+
+9) Extras opcionales (si hay tiempo)
+
+Selector de avatar (Ready Player Me URL).
+
+Emociones del avatar según sentiment del texto.
+
+Buffer de contexto conversacional y system prompt editable en UI.
+
+Exportar srt/vtt de la conversación.
+
+Acción: Construye el proyecto cumpliendo lo anterior. Si alguna API concreta no está disponible en el entorno, provee mocks y describe exactamente cómo reemplazarlos. Entrega todo en un README paso a paso.

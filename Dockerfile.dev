@@ -1,0 +1,32 @@
+# Dockerfile para desarrollo con hot-reload
+FROM node:18-alpine
+
+# Instalar dependencias de sistema
+RUN apk add --no-cache \
+    ffmpeg \
+    python3 \
+    make \
+    g++
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Copiar package files
+COPY package*.json ./
+COPY tsconfig.json ./
+COPY next.config.mjs ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+COPY vercel.json ./
+
+# Instalar dependencias (incluyendo devDependencies)
+RUN npm install
+
+# Copiar código fuente
+COPY . .
+
+# Exponer puerto
+EXPOSE 3000
+
+# Iniciar en modo desarrollo
+CMD ["npm", "run", "dev"]

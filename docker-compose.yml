@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  avatar-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      # Para desarrollo: montar solo los archivos que necesitas
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    container_name: avatar-conversacional
+    
+  # Opcional: Para desarrollo con hot-reload
+  avatar-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    container_name: avatar-conversacional-dev
+    command: npm run dev
+
+networks:
+  default:
+    name: avatar-network

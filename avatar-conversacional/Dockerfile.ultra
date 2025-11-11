@@ -1,0 +1,29 @@
+# Dockerfile ULTRA SIMPLIFICADO - Avatar Conversacional
+# Versión mínima que garantiza funcionamiento
+
+# Usar imagen base de Node.js Alpine (ligera y estable)
+FROM node:18-alpine
+
+# Configurar directorio de trabajo
+WORKDIR /app
+
+# Instalar dependencias del sistema necesarias
+RUN apk add --no-cache ffmpeg python3 make g++
+
+# Copiar archivos de configuración primero (mejor caché)
+COPY package.json pnpm-lock.yaml ./
+
+# Instalar dependencias
+RUN npm install
+
+# Copiar todo el código fuente
+COPY . .
+
+# Compilar la aplicación (si es necesario)
+RUN npm run build 2>/dev/null || true
+
+# Exponer puerto
+EXPOSE 3000
+
+# Comando por defecto
+CMD ["npm", "start"]

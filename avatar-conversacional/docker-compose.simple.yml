@@ -1,0 +1,49 @@
+# Docker Compose SIMPLIFICADO - Avatar Conversacional
+# Configuración robusta y simplificada
+
+version: '3.8'
+
+services:
+  avatar-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.ultra
+    container_name: avatar-conversacional
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # No volumes para desarrollo por simplicidad
+      - ./public:/app/public:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Desarrollo con hot-reload (opcional)
+  avatar-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: avatar-conversacional-dev
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
+    profiles:
+      - dev
+    command: npm run dev
+    
+networks:
+  default:
+    name: avatar-network
